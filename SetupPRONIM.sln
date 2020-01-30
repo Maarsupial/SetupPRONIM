@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29613.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SetupPRONIM", "SetupPRONIM\SetupPRONIM.csproj", "{263E0E4C-0073-4861-BA4A-05B5D80D3057}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Default = Debug|Default
+		Release|Default = Release|Default
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{263E0E4C-0073-4861-BA4A-05B5D80D3057}.Debug|Default.ActiveCfg = Debug|Any CPU
+		{263E0E4C-0073-4861-BA4A-05B5D80D3057}.Debug|Default.Build.0 = Debug|Any CPU
+		{263E0E4C-0073-4861-BA4A-05B5D80D3057}.Release|Default.ActiveCfg = Release|Any CPU
+		{263E0E4C-0073-4861-BA4A-05B5D80D3057}.Release|Default.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B32EA25D-C818-4C3C-B39A-B44600FE22CB}
+	EndGlobalSection
+EndGlobal
