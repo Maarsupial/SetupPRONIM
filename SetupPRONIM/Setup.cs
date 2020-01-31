@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -14,89 +14,9 @@ namespace SetupPRONIM
 {
     public partial class Setup : Form
     {
-        [DllImport("odbccp32.dll")]
-        private static extern bool SQLConfigDataSource(
-                IntPtr hwndParent,
-                int fRequest,
-                string lpszDriver,
-                string lpszAttributes
-            );
-
-        const int ODBC_ADD_DSN = 1;
-        const int ODBC_CONFIG_DSN = 2;
-        const int ODBC_REMOVE_DSN = 3;
-        const int ODBC_ADD_SYS_DSN = 4;
-        const int ODBC_CONFIG_SYS_DSN = 5;
-        const int ODBC_REMOVE_SYS_DSN = 6;
-        const int ODBC_REMOVE_DEFAULT_DSN = 7;
-
-
-        [DllImport("odbc32.dll")]
-        private static extern short SQLDriverConnect(
-                IntPtr ConnectionHandle,
-                IntPtr WindowHandle,
-                string InConnectionString,
-                int StringLength1,
-                char[] OutConnectionString,
-                int BufferLength,
-                int StringLength2Ptr,
-                int DriverCompletion
-            );
-
-        [DllImport("odbc32.dll")]
-        private static extern short SQLAllocHandle(
-                short hType,
-                IntPtr inputHandle,
-                out IntPtr outputHandle
-            );
-
-        [DllImport("odbc32.dll")]
-        private static extern short SQLSetEnvAttr(
-                IntPtr EnvironmentHandle,
-                int Attribute,
-                IntPtr ValuePtr,
-                int StringLength
-            );
-
-        [DllImport("odbc32.dll")]
-        private static extern short SQLSetConnectAttr(
-                IntPtr ConnectionHandle,
-                int Attribute,
-                IntPtr ValuePtr,
-                int StringLength
-            );
-
-        [DllImport("odbc32.dll")]
-        private static extern short SQLFreeHandle(
-                ushort HandleType,
-                IntPtr InputHandle
-            );
-
-        [DllImport("odbc32.dll")]
-        private static extern short SQLDisconnect(
-                IntPtr ConnectionHandle
-            );
-
-        const short SQL_HANDLE_ENV = 1;
-        const short SQL_HANDLE_DBC = 2;
-        const short SQL_HANDLE_STMT = 3;
-        const short SQL_HANDLE_DESC = 4;
-        
-        const int SQL_ATTR_ODBC_VERSION = 200;
-        const int SQL_OV_ODBC3 = 3;
-        const short SQL_SUCCESS = 0;
-
-        const short SQL_NEED_DATA = 99;
-        const short DEFAULT_RESULT_SIZE = 1024;
-        const string SQL_DRIVER_STR = "DRIVER=SQL SERVER";
-        const int SQL_SUCCESS_WITH_INFO = 1;
-
-        const int SQL_LOGIN_TIMEOUT = 103;
-        const int SQL_DRIVER_PROMPT = 2;
-
-
         private int panelId;
         private string tempStr;
+        public int index;
 
         public Setup()
         {
@@ -151,7 +71,7 @@ namespace SetupPRONIM
 
                 backgroundInstaller.RunWorkerAsync();
             }
-            else if(panelId == 2)
+            else if(panelId == 3)
             {
                 this.Close();
             }
@@ -221,12 +141,6 @@ namespace SetupPRONIM
             }
         }
 
-        private void configEnvironment(string server)
-        {
-        }
-
-        public int index;
-
         private void backgroundInstaller_DoWork(object sender, DoWorkEventArgs e)
         {
             string path = @"\\PMMCTS01";
@@ -240,24 +154,15 @@ namespace SetupPRONIM
             tempStr = @"Criando SQL Server DSN: " + "PRONIM32";
             this.backgroundInstaller.ReportProgress(index++);
 
-            SQLConfigDataSource(IntPtr.Zero, ODBC_ADD_SYS_DSN, "SQL Server",
-                    "DSN=PRONIM32\0" +
-                    "Description=PRONIM32\0" +
-                    "Server=ADMINBD04\\PRONIM\0" +
-                    "Trusted_Connection=No\0"
-                );
+            ODBCManager.CreateDSN32("PRONIM32", "PRONIM32", @"ADMINBD04\PRONIM", "SQL Server", false, "");
 
             tempStr = @"Conectando à ODBC: " + "ADMINBD04";
             this.backgroundInstaller.ReportProgress(index++);
 
-            connectODBC();
-
-            e.Cancel = true;
-            backgroundInstaller.ReportProgress(0);
-            return;
+            ODBCManager.ConnectODBC("PRONIM32", "SQL Server", @"ADMINBD04\PRONIM", "PRONIMCONSULTA", "#consulta123");
 
             // Solicita autenticação para se conectar usuário, a não ser que o usuário cancele a operação
-            while(false)
+            while(true)
             {
                 if (NetworkInterface.connectToRemote(path, null, null, true) == NetworkInterface.getErrorForNumber(NetworkInterface.ERROR_CANCELLED))
                 {
@@ -458,7 +363,6 @@ namespace SetupPRONIM
 
             if(!tempStr.Equals(""))
             {
-                //tempStr += " || " + Convert.ToString(index);
                 labelProgress.Text = tempStr;
                 textBoxProgress.AppendText(tempStr + "\r\n");
                 textBoxProgress.SelectionStart = textBoxProgress.TextLength;
@@ -486,119 +390,6 @@ namespace SetupPRONIM
                 buttonCancel.Enabled = false;
                 panelId++;
             }
-        }
-
-        public void connectODBC()
-        {
-            string[] retval = null;
-            string txt = string.Empty;
-            IntPtr henv = IntPtr.Zero;
-            IntPtr hconn = IntPtr.Zero;
-            StringBuilder inString = new StringBuilder(SQL_DRIVER_STR);
-            StringBuilder outString = new StringBuilder(DEFAULT_RESULT_SIZE);
-            short inStringLength = (short)inString.Length;
-            short lenNeeded = 0;
-
-            int retcode;
-
-            try
-            {
-                if (SQL_SUCCESS == SQLAllocHandle(SQL_HANDLE_ENV, henv, out henv))
-                {
-                    if(SQL_SUCCESS == SQLSetEnvAttr(henv, SQL_ATTR_ODBC_VERSION, (IntPtr)SQL_OV_ODBC3, 0))
-                    {
-                        if (SQL_SUCCESS == SQLAllocHandle(SQL_HANDLE_DBC, henv, out hconn))
-                        {
-                            SQLSetConnectAttr(hconn, SQL_LOGIN_TIMEOUT, (IntPtr)5, 0);
-
-                            retcode = SQLDriverConnect(
-                            hconn,
-                            IntPtr.Zero,
-                            "DRIVER={SQL Server};DSN={PRONIM32};Server={ADMINBD04\\PRONIM};UID={PRONIMCONSULTA};PWD={#consulta123};Trusted_Connection={No}",
-                            "DRIVER={SQL Server};DSN={PRONIM32};Server={ADMINBD04\\PRONIM};UID={PRONIMCONSULTA};PWD={#consulta123};Trusted_Connection={No}".Length,
-                            OutConnStr,
-                            255,
-                            OutConnStrLen,
-                            SQL_DRIVER_PROMPT);
-                        }
-                    }
-                }
-            }
-            catch(Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Acquire SQL Servier List Error");
-            }
-            /*
-            IntPtr hdbc = IntPtr.Zero;
-            IntPtr hstmt = IntPtr.Zero;
-            int retcode;
-
-            char[] OutConnStr = new char[255];
-            int OutConnStrLen = 0;
-
-            retcode = SQLAllocHandle(SQL_HANDLE_ENV, IntPtr.Zero, henv);
-
-            if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO)
-            {
-                retcode = SQLSetEnvAttr(henv, SQL_ATTR_ODBC_VERSION, (IntPtr)SQL_OV_ODBC3, 0);
-
-                if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO)
-                {
-                    retcode = SQLAllocHandle(SQL_HANDLE_DBC, henv, hdbc);
-
-                    if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO)
-                    {
-                        SQLSetConnectAttr(hdbc, SQL_LOGIN_TIMEOUT, (IntPtr)5, 0);
-
-                        retcode = SQLDriverConnect(
-                            hdbc,
-                            IntPtr.Zero,
-                            "DRIVER={SQL Server};DSN={PRONIM32};Server={ADMINBD04\\PRONIM};UID={PRONIMCONSULTA};PWD={#consulta123};Trusted_Connection={No}",
-                            "DRIVER={SQL Server};DSN={PRONIM32};Server={ADMINBD04\\PRONIM};UID={PRONIMCONSULTA};PWD={#consulta123};Trusted_Connection={No}".Length,
-                            OutConnStr,
-                            255,
-                            OutConnStrLen,
-                            SQL_DRIVER_PROMPT);
-
-                        if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO)
-                        {
-                            retcode = SQLAllocHandle(SQL_HANDLE_STMT, hdbc, hstmt);
-
-                            if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO)
-                            {
-                                SQLFreeHandle(SQL_HANDLE_STMT, hstmt);
-                            }
-                            else
-                            {
-                                MessageBox.Show("OCORREU UM ERRO 5" + Convert.ToString(retcode), "ERROR", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            }
-
-                            SQLDisconnect(hdbc);
-                        }
-                        else
-                        {
-                            MessageBox.Show("OCORREU UM ERRO 4" + Convert.ToString(retcode), "ERROR", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        }
-
-                        SQLFreeHandle(SQL_HANDLE_DBC, hdbc);
-                    }
-                    else
-                    {
-                        MessageBox.Show("OCORREU UM ERRO 3" + Convert.ToString(retcode), "ERROR", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                }
-                else
-                {
-                    MessageBox.Show("OCORREU UM ERRO 2" + Convert.ToString(retcode), "ERROR", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                SQLFreeHandle(SQL_HANDLE_ENV, henv);
-            }
-            else
-            {
-                MessageBox.Show("OCORREU UM ERRO 1" + Convert.ToString(retcode), "ERROR", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-
-            return retcode;*/
         }
     }
 }
