@@ -60,6 +60,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="NetworkInterface.cs" />
+    <Compile Include="ODBCManager.cs" />
     <Compile Include="Setup.cs">
       <SubType>Form</SubType>
     </Compile>

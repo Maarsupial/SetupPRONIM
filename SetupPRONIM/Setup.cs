@@ -16,7 +16,10 @@ namespace SetupPRONIM
     {
         private int panelId;
         private string tempStr;
-        public int index;
+        private int progress;
+        private const int CM_LC_PP_AF = 1;
+        private const int AR_TP = 2;
+        private const int CP_GP = 3;
 
         public Setup()
         {
@@ -71,7 +74,7 @@ namespace SetupPRONIM
 
                 backgroundInstaller.RunWorkerAsync();
             }
-            else if(panelId == 3)
+            else if (panelId == 3)
             {
                 this.Close();
             }
@@ -95,17 +98,251 @@ namespace SetupPRONIM
             }
         }
 
-        private void createProcess(string fileName, string arguments)
+        private void backgroundInstaller_DoWork(object sender, DoWorkEventArgs e)
+        {
+            string server = @"\\PMMCTS01";
+            string workPath = Path.Combine(server, "PRONIM");
+            string tempPath = Path.GetTempPath();
+
+            progress = 0;
+
+            // Desconecta de qualquer conexão existente com o servidor para evitar erros
+            NetworkInterface.disconnectRemote(server);
+
+            // Configuração do DSN e da conexão ODBC
+            reportProgressString(@"Criando SQL Server DSN: PRONIM32");
+            ODBCManager.CreateDSN32("PRONIM32", "PRONIM32", @"ADMINBD04\PRONIM", "SQL Server", false, "");
+
+            reportProgressString(@"Conectando à ODBC: ADMINBD04\PRONIM");
+            ODBCManager.ConnectODBC("PRONIM32", "SQL Server", @"ADMINBD04\PRONIM", "PRONIMCONSULTA", "#consulta123");
+
+            // Solicita autenticação para se conectar ao servidor
+            while (true)
+            {
+                if (NetworkInterface.connectToRemote(server, null, null, true).Equals(NetworkInterface.getErrorForNumber(NetworkInterface.ERROR_CANCELLED)))
+                {
+                    if (MessageBox.Show("Realmente deseja cancelar a operação?", "ALERT", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+                    {
+                        e.Cancel = true;
+                        backgroundInstaller.ReportProgress(0);
+                        return;
+                    }
+                    else break;
+                }
+            }
+
+            // Configuração do ambiente onde será feita a instalação
+            reportProgressString(@"Pasta de instalação: C:\PRONIM\");
+            string[] folders = {
+                    @"C:\PRONIM\INSTALADORES\",
+                    @"C:\PRONIM\ATUALIZADOR\",
+                    @"C:\PRONIM\CPNBCASP\2018\",
+                    @"C:\ProgramData\PRONIM\SUSINC\"
+                };
+
+            foreach (string folder in folders)
+            {
+                reportProgressString(@"Criando pasta: " + folder);
+
+                if (!Directory.Exists(folder))
+                {
+                    Directory.CreateDirectory(folder);
+                }
+
+            }
+
+            string[] sources = {
+                    Path.Combine(workPath, @"CPNBCASP\cpcetil.ini"),
+                    Path.Combine(workPath, @"ATUALIZADOR\atualizador.exe"),
+                    Path.Combine(workPath, @"ATUALIZADOR\Configuracao.xml"),
+                    Path.Combine(workPath, @"CPNBCASP\2018\")
+                };
+            string[] destinations = {
+                    @"C:\PRONIM\CPNBCASP\cpcetil.ini",
+                    @"C:\PRONIM\ATUALIZADOR\atualizador.exe",
+                    @"C:\ProgramData\PRONIM\SUSINC\Configuracao.xml",
+                    @"C:\PRONIM\CPNBCASP\"
+                };
+
+            for (int i = 0; i < sources.Length; i++)
+            {
+                if (i != sources.Length - 1)
+                {
+                    reportProgressString(@"Copiando arquivo: " + sources[i]);
+                    File.Copy(sources[i], destinations[i], true);
+                    continue;
+                }
+                reportProgressString(@"Copiando pasta: " + sources[i]);
+                DirectoryCopy(sources[i], destinations[i], true);
+            }
+
+            // Instalação de todos os componentes necessários
+            List<int> install = new List<int>();
+            foreach (TreeNode node in treeViewShortcut.Nodes)
+            {
+                if (node.Checked)
+                {
+                    if (node.Text.Equals("CM") || node.Text.Equals("LC") || node.Text.Equals("PP") || node.Text.Equals("AF"))
+                    {
+                        if (!install.Contains(CM_LC_PP_AF))
+                        {
+                            install.Add(CM_LC_PP_AF);
+                        }
+                    }
+                    else if (node.Text.Equals("AR") || node.Text.Equals("TP"))
+                    {
+                        if (!install.Contains(AR_TP))
+                        {
+                            install.Add(AR_TP);
+                        }
+                    }
+                    else if (node.Text.Equals("CP") || node.Text.Equals("GP"))
+                    {
+                        if (!install.Contains(CP_GP))
+                        {
+                            install.Add(CP_GP);
+                        }
+                    }
+                }
+            }
+
+            List<string> setups = new List<string>();
+            foreach (int mode in install)
+            {
+                switch (mode)
+                {
+                    case CM_LC_PP_AF:
+                        setups.Add("CM_*");
+                        setups.Add("LC_*");
+                        setups.Add("PP_*");
+                        setups.Add("AF_*");
+                        break;
+                    case AR_TP:
+                        setups.Add("AR_*");
+                        setups.Add("TP_*");
+                        break;
+                    case CP_GP:
+                        setups.Add("CPInstaladorUnificado_*");
+                        setups.Add("GP_*");
+                        break;
+                }
+            }
+
+            foreach (string setup in setups)
+            {
+                string searchIn = workPath;
+                switch (setup)
+                {
+                    case "CM_*":
+                        searchIn = Path.Combine(searchIn, @"INSTALADORES\CM");
+                        break;
+                    case "LC_*":
+                        searchIn = Path.Combine(searchIn, @"INSTALADORES\LC");
+                        break;
+                    case "PP_*":
+                        searchIn = Path.Combine(searchIn, @"INSTALADORES\PP");
+                        break;
+                    case "AF_*":
+                        searchIn = Path.Combine(searchIn, @"INSTALADORES\AF");
+                        break;
+                    case "AR_*":
+                        searchIn = Path.Combine(searchIn, @"INSTALADORES\AR");
+                        break;
+                    case "TP_*":
+                        searchIn = Path.Combine(searchIn, @"INSTALADORES\TP");
+                        break;
+                    case "CPInstaladorUnificado_*":
+                        searchIn = Path.Combine(searchIn, @"INSTALADORES\CPNBCASP");
+                        break;
+                    case "GP_*":
+                        searchIn = Path.Combine(searchIn, @"INSTALADORES\GP");
+                        break;
+                }
+
+                string fileName = Path.GetFileName(Directory.GetFiles(searchIn, setup)[0]);
+                string source = Path.Combine(searchIn, fileName);
+                string destination = Path.Combine(tempPath, fileName);
+
+                reportProgressString("Copiando instalador: " + fileName);
+                File.Copy(source, destination, true);
+
+                reportProgressString("Instalando:  " + fileName);
+                createProcess(destination, @"/S", true);
+            }
+
+            // Criação dos atalhos
+            string publicDesktop = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory);
+            foreach (TreeNode node in treeViewShortcut.Nodes)
+            {
+                if (node.Checked)
+                {
+                    string shortcutName = "PRONIM " + node.Text + ".lnk";
+                    string shortcut = @"ATUALIZADOR\" + shortcutName;
+                    shortcut = Path.Combine(workPath, shortcut);
+
+                    reportProgressString(@"Copiando atalho: " + shortcutName);
+                    File.Copy(shortcut, Path.Combine(tempPath, shortcutName));
+                    File.Copy(Path.Combine(tempPath, shortcutName), Path.Combine(publicDesktop, shortcutName));
+                }
+            }
+
+            // Desconecta do servidor
+            NetworkInterface.disconnectRemote(server);
+
+            // Executa o atualizador
+            reportProgressString("Executando: atualizador.exe");
+            createProcess(@"C:\PRONIM\ATUALIZADOR\atualizador.exe", "", true);
+        }
+
+        private void backgroundInstaller_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            progressBar.Value = e.ProgressPercentage;
+
+            if (!tempStr.Equals(""))
+            {
+                labelProgress.Text = tempStr;
+                textBoxProgress.AppendText(tempStr + "\r\n");
+                textBoxProgress.SelectionStart = textBoxProgress.TextLength;
+                textBoxProgress.ScrollToCaret();
+            }
+            tempStr = "";
+        }
+
+        private void backgroundInstaller_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            if (e.Cancelled)
+            {
+                labelProgress.Text = "Instalação cancelada!";
+            }
+            else if (e.Error != null)
+            {
+                labelProgress.Text = "Ocorreu um erro durante a instalação!";
+            }
+            else
+            {
+                labelProgress.Text = "Tarefa Concluída com sucesso!";
+                buttonNext.Text = "Concluir";
+                buttonBack.Enabled = false;
+                buttonNext.Enabled = true;
+                buttonCancel.Enabled = false;
+                panelId++;
+            }
+        }
+
+        private void createProcess(string fileName, string arguments, bool wait)
         {
             ProcessStartInfo processStartInfo = new ProcessStartInfo();
             processStartInfo.FileName = fileName;
             processStartInfo.Arguments = arguments;
             Process process = Process.Start(processStartInfo);
-            process.WaitForInputIdle();
-            process.WaitForExit();
+            if (wait)
+            {
+                process.WaitForInputIdle();
+                process.WaitForExit();
+            }
         }
 
-        private static void directoryCopy(string source, string destination, bool recurse)
+        private static void DirectoryCopy(string source, string destination, bool recurse)
         {
             // Get the subdirectories for the specified directory.
             DirectoryInfo dir = new DirectoryInfo(source);
@@ -136,260 +373,15 @@ namespace SetupPRONIM
                 foreach (DirectoryInfo subdir in dirs)
                 {
                     string temppath = Path.Combine(destination, subdir.Name);
-                    directoryCopy(subdir.FullName, temppath, recurse);
+                    DirectoryCopy(subdir.FullName, temppath, recurse);
                 }
             }
         }
 
-        private void backgroundInstaller_DoWork(object sender, DoWorkEventArgs e)
+        private void reportProgressString(string text)
         {
-            string path = @"\\PMMCTS01";
-            index = 0;
-
-            // Desconecta de qualquer conexão existente com o servidor para evitar erros
-            NetworkInterface.disconnectRemote(path);
-
-            // Inicio da configuração do banco de dados
-
-            tempStr = @"Criando SQL Server DSN: " + "PRONIM32";
-            this.backgroundInstaller.ReportProgress(index++);
-
-            ODBCManager.CreateDSN32("PRONIM32", "PRONIM32", @"ADMINBD04\PRONIM", "SQL Server", false, "");
-
-            tempStr = @"Conectando à ODBC: " + "ADMINBD04";
-            this.backgroundInstaller.ReportProgress(index++);
-
-            ODBCManager.ConnectODBC("PRONIM32", "SQL Server", @"ADMINBD04\PRONIM", "PRONIMCONSULTA", "#consulta123");
-
-            // Solicita autenticação para se conectar usuário, a não ser que o usuário cancele a operação
-            while(true)
-            {
-                if (NetworkInterface.connectToRemote(path, null, null, true) == NetworkInterface.getErrorForNumber(NetworkInterface.ERROR_CANCELLED))
-                {
-                    if (MessageBox.Show("Realmente deseja cancelar a operação?", "ALERT", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
-                    {
-                        e.Cancel = true;
-                        backgroundInstaller.ReportProgress(0);
-                        return;
-                    }
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-            path = Path.Combine(path, @"PRONIM");
-
-            tempStr = @"Pasta de instalação: C:\PRONIM\";
-            this.backgroundInstaller.ReportProgress(index++);
-
-            // Inicio da configuração do ambiente onde será feita a instalação
-            string[] paths = {@"C:\PRONIM\INSTALADORES\",
-                    @"C:\PRONIM\ATUALIZADOR\",
-                    @"C:\PRONIM\CPNBCASP\2018\",
-                    @"C:\ProgramData\PRONIM\SUSINC\"
-                };
-
-            foreach (string dir in paths)
-            {
-                tempStr = @"Criando pasta: " + dir;
-                this.backgroundInstaller.ReportProgress(index++);
-
-                if (!Directory.Exists(dir))
-                {
-                    Directory.CreateDirectory(dir);
-                }
-            }
-
-            string source, destination;
-            source = path + @"\CPNBCASP\cpcetil.ini";
-            destination = @"C:\PRONIM\CPNBCASP\cpcetil.ini";
-
-            tempStr = @"Copiando arquivo: " + source;
-            this.backgroundInstaller.ReportProgress(index++);
-
-            File.Copy(source, destination, true);
-
-
-            source = path + @"\CPNBCASP\2018\";
-            destination = @"C:\PRONIM\CPNBCASP\";
-
-            tempStr = @"Copiando pasta: " + source;
-            this.backgroundInstaller.ReportProgress(index++);
-
-            directoryCopy(source, destination, true);
-
-
-            source = path + @"\ATUALIZADOR\atualizador.exe";
-            destination = @"C:\PRONIM\ATUALIZADOR\atualizador.exe";
-
-            tempStr = @"Copiando arquivo: " + source;
-            this.backgroundInstaller.ReportProgress(index++);
-
-            File.Copy(source, destination, true);
-
-
-            source = path + @"\ATUALIZADOR\Configuracao.xml";
-            destination = @"C:\ProgramData\PRONIM\SUSINC\Configuracao.xml";
-
-            tempStr = @"Copiando arquivo: " + source;
-            this.backgroundInstaller.ReportProgress(index++);
-
-            File.Copy(source, destination, true);
-
-            string tmpFolder = Path.Combine(Application.StartupPath, "temp");
-
-            tempStr = @"Criando pasta: " + tmpFolder;
-            this.backgroundInstaller.ReportProgress(index++);
-
-            if (!Directory.Exists(tmpFolder))
-            {
-                Directory.CreateDirectory(tmpFolder);
-            }
-
-            // Instalação de todos os componentes
-            string[] files = { "CM_*", "LC_*", "PP_*", "AF_*", "GP_*", "AR_*", "TP_*", "CPInstaladorUnificado_*" };
-            foreach (string file in files)
-            {
-                string tmpPath = path;
-                if (file.Equals("CM_*"))
-                {
-                    tmpPath = Path.Combine(tmpPath, @"INSTALADORES\CM");
-                }
-                else if (file.Equals("LC_*"))
-                {
-                    tmpPath = Path.Combine(tmpPath, @"INSTALADORES\LC");
-                }
-                else if (file.Equals("PP_*"))
-                {
-                    tmpPath = Path.Combine(tmpPath, @"INSTALADORES\PP");
-                }
-                else if (file.Equals("AF_*"))
-                {
-                    tmpPath = Path.Combine(tmpPath, @"INSTALADORES\AF");
-                }
-                else if (file.Equals("AR_*"))
-                {
-                    tmpPath = Path.Combine(tmpPath, @"INSTALADORES\AR");
-                }
-                else if (file.Equals("TP_*"))
-                {
-                    tmpPath = Path.Combine(tmpPath, @"INSTALADORES\TP");
-                }
-                else if (file.Equals("CPInstaladorUnificado_*"))
-                {
-                    tmpPath = Path.Combine(tmpPath, @"INSTALADORES\CPNBCASP");
-                }
-                else if (file.Equals("GP_*"))
-                {
-                    tmpPath = Path.Combine(tmpPath, @"INSTALADORES\GP");
-                }
-                string[] filePath = Directory.GetFiles(tmpPath, file);
-                string fileName = Path.GetFileName(filePath[0]);
-                string origin = Path.Combine(path, filePath[0]);
-                string dest = Path.Combine(tmpFolder, fileName);
-
-                tempStr = "Copiando instalador: " + origin;
-                this.backgroundInstaller.ReportProgress(index++);
-
-                // Copia o instalador do servidor para o computador local
-                File.Copy(origin, dest, true);
-
-                if (backgroundInstaller.CancellationPending)
-                {
-                    e.Cancel = true;
-
-                    backgroundInstaller.ReportProgress(0);
-                    return;
-                }
-
-                tempStr = "Instalando:  " + fileName;
-                this.backgroundInstaller.ReportProgress(index++);
-
-                // Executa o instalador com o paramento /S para fazer uma execução "silenciosa"
-                createProcess(dest, "/S");
-
-                if (backgroundInstaller.CancellationPending)
-                {
-                    e.Cancel = true;
-
-                    backgroundInstaller.ReportProgress(0);
-                    return;
-                }
-            }
-
-            // Inicio da criação dos atalhos selecionados
-            string[] shortcuts = {"PRONIM CM.lnk",
-                "PRONIM LC.lnk",
-                "PRONIM PP.lnk",
-                "PRONIM AF.lnk",
-                "PRONIM GP.lnk",
-                "PRONIM CP.lnk",
-                "PRONIM AR.lnk",
-                "PRONIM TP.lnk"
-                };
-            foreach (TreeNode node in treeViewShortcut.Nodes)
-            {
-                if (node.Checked)
-                {
-                    string shortcut = path + @"\ATUALIZADOR\" + shortcuts[node.Index];
-                    string tempFolder = Path.Combine(Application.StartupPath, "temp");
-                    string destFolder = Path.Combine(tempFolder, shortcuts[node.Index]);
-                    string publicFolder = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory);
-
-                    tempStr = @"Copiando atalho: " + shortcuts[node.Index];
-                    this.backgroundInstaller.ReportProgress(index++);
-
-                    File.Copy(shortcut, destFolder, true);
-                    File.Copy(destFolder, Path.Combine(publicFolder, shortcuts[node.Index]), true);
-                }
-            }
-
-            // Desconecta do servidor
-            NetworkInterface.disconnectRemote(path);
-
-            tempStr = "Executando atualizador.exe";
-            this.backgroundInstaller.ReportProgress(index++);
-
-            // Executa o atualizador
-            createProcess(@"C:\PRONIM\ATUALIZADOR\atualizador.exe", "");
-
-        }
-
-        private void backgroundInstaller_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            progressBar.Value = e.ProgressPercentage;
-
-            if(!tempStr.Equals(""))
-            {
-                labelProgress.Text = tempStr;
-                textBoxProgress.AppendText(tempStr + "\r\n");
-                textBoxProgress.SelectionStart = textBoxProgress.TextLength;
-                textBoxProgress.ScrollToCaret();
-            }
-            tempStr = "";
-        }
-
-        private void backgroundInstaller_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            if (e.Cancelled)
-            {
-                labelProgress.Text = "Instalação cancelada!";
-            }
-            else if (e.Error != null)
-            {
-                labelProgress.Text = "Ocorreu um erro durante a instalação!";
-            }
-            else
-            {
-                labelProgress.Text = "Tarefa Concluída com sucesso!";
-                buttonNext.Text = "Concluir";
-                buttonBack.Enabled = false;
-                buttonNext.Enabled = true;
-                buttonCancel.Enabled = false;
-                panelId++;
-            }
+            tempStr = text;
+            this.backgroundInstaller.ReportProgress(progress++);
         }
     }
 }
