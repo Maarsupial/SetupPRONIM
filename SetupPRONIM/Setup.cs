@@ -20,6 +20,7 @@ namespace SetupPRONIM
         private const int CM_LC_PP_AF = 1;
         private const int AR_TP = 2;
         private const int CP_GP = 3;
+        private bool GP_ODBC = false;
 
         public Setup()
         {
@@ -66,6 +67,11 @@ namespace SetupPRONIM
                     if (node.Checked)
                     {
                         selectedNodes++;
+                    }
+                    if (node.Text.Equals(" GP"))
+                    {
+                        GP_ODBC = true;
+                        selectedNodes += 2;
                     }
                 }
                 progressBar.Maximum = 1 + 1 + 4 + 4 + 1 + 8 + 8 + selectedNodes + 1;
@@ -116,10 +122,16 @@ namespace SetupPRONIM
             reportProgressString(@"Conectando à ODBC: ADMINBD04\PRONIM");
             ODBCManager.ConnectODBC("PRONIM32", "SQL Server", @"ADMINBD04\PRONIM", "PRONIMCONSULTA", "#consulta123");
 
+            if(GP_ODBC)
+            {
+                reportProgressString(@"Criando SQL Server DSN: GP");
+                ODBCManager.CreateDSN32("GP", "FOLHA", @"ADMINBD05\PRONIM", "SQL Server Native Client 11.0", false, "");
+            }
+
             // Solicita autenticação para se conectar ao servidor
             while (true)
             {
-                if (NetworkInterface.connectToRemote(server, null, null, true).Equals(NetworkInterface.getErrorForNumber(NetworkInterface.ERROR_CANCELLED)))
+                if (NetworkInterface.connectToRemote(server, null, null, true) == NetworkInterface.getErrorForNumber(NetworkInterface.ERROR_CANCELLED))
                 {
                     if (MessageBox.Show("Realmente deseja cancelar a operação?", "ALERT", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                     {
@@ -127,8 +139,8 @@ namespace SetupPRONIM
                         backgroundInstaller.ReportProgress(0);
                         return;
                     }
-                    else break;
                 }
+                else break;
             }
 
             // Configuração do ambiente onde será feita a instalação
@@ -174,6 +186,21 @@ namespace SetupPRONIM
                 }
                 reportProgressString(@"Copiando pasta: " + sources[i]);
                 DirectoryCopy(sources[i], destinations[i], true);
+            }
+            if (GP_ODBC)
+            {
+                if(Environment.Is64BitOperatingSystem)
+                {
+                    reportProgressString(@"Copiando arquivo: sqlncli 64 bits.msi");
+                    File.Copy(Path.Combine(workPath, @"sqlncli 64 bits.msi"), Path.Combine(tempPath, @"sqlncli 64 bits.msi"), true);
+                    createProcess(Path.Combine(tempPath, @"sqlncli 64 bits.msi"), "/quiet IACCEPTSQLNCLILICENSETERMS=YES", true);
+                }
+                else
+                {
+                    reportProgressString(@"Copiando arquivo: sqlncli 32 bits.msi");
+                    File.Copy(Path.Combine(workPath, @"sqlncli 32 bits.msi"), Path.Combine(tempPath, @"sqlncli 32 bits.msi"), true);
+                    createProcess(Path.Combine(tempPath, @"sqlncli 32 bits.msi"), "/quiet IACCEPTSQLNCLILICENSETERMS=YES", true);
+                }
             }
 
             // Instalação de todos os componentes necessários
@@ -264,10 +291,10 @@ namespace SetupPRONIM
                 string destination = Path.Combine(tempPath, fileName);
 
                 reportProgressString("Copiando instalador: " + fileName);
-                File.Copy(source, destination, true);
+                //File.Copy(source, destination, true);
 
                 reportProgressString("Instalando:  " + fileName);
-                createProcess(destination, @"/S", true);
+                //createProcess(destination, @"/S", true);
             }
 
             // Criação dos atalhos
@@ -276,13 +303,13 @@ namespace SetupPRONIM
             {
                 if (node.Checked)
                 {
-                    string shortcutName = "PRONIM " + node.Text + ".lnk";
+                    string shortcutName = "PRONIM" + node.Text + ".lnk";
                     string shortcut = @"ATUALIZADOR\" + shortcutName;
                     shortcut = Path.Combine(workPath, shortcut);
 
                     reportProgressString(@"Copiando atalho: " + shortcutName);
-                    File.Copy(shortcut, Path.Combine(tempPath, shortcutName));
-                    File.Copy(Path.Combine(tempPath, shortcutName), Path.Combine(publicDesktop, shortcutName));
+                    File.Copy(shortcut, Path.Combine(tempPath, shortcutName), true);
+                    File.Copy(Path.Combine(tempPath, shortcutName), Path.Combine(publicDesktop, shortcutName), true);
                 }
             }
 
@@ -301,6 +328,7 @@ namespace SetupPRONIM
             if (!tempStr.Equals(""))
             {
                 labelProgress.Text = tempStr;
+                //labelProgress.Text += "|" + progress.ToString();
                 textBoxProgress.AppendText(tempStr + "\r\n");
                 textBoxProgress.SelectionStart = textBoxProgress.TextLength;
                 textBoxProgress.ScrollToCaret();
