@@ -28,14 +28,14 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.Windows.Forms.TreeNode treeNode9 = new System.Windows.Forms.TreeNode(" CM");
-            System.Windows.Forms.TreeNode treeNode10 = new System.Windows.Forms.TreeNode(" LC");
-            System.Windows.Forms.TreeNode treeNode11 = new System.Windows.Forms.TreeNode(" PP");
-            System.Windows.Forms.TreeNode treeNode12 = new System.Windows.Forms.TreeNode(" AF");
-            System.Windows.Forms.TreeNode treeNode13 = new System.Windows.Forms.TreeNode(" GP");
-            System.Windows.Forms.TreeNode treeNode14 = new System.Windows.Forms.TreeNode(" CP");
-            System.Windows.Forms.TreeNode treeNode15 = new System.Windows.Forms.TreeNode(" AR");
-            System.Windows.Forms.TreeNode treeNode16 = new System.Windows.Forms.TreeNode(" TP");
+            System.Windows.Forms.TreeNode treeNode1 = new System.Windows.Forms.TreeNode(" CM");
+            System.Windows.Forms.TreeNode treeNode2 = new System.Windows.Forms.TreeNode(" LC");
+            System.Windows.Forms.TreeNode treeNode3 = new System.Windows.Forms.TreeNode(" PP");
+            System.Windows.Forms.TreeNode treeNode4 = new System.Windows.Forms.TreeNode(" AF");
+            System.Windows.Forms.TreeNode treeNode5 = new System.Windows.Forms.TreeNode(" GP");
+            System.Windows.Forms.TreeNode treeNode6 = new System.Windows.Forms.TreeNode(" CP");
+            System.Windows.Forms.TreeNode treeNode7 = new System.Windows.Forms.TreeNode(" AR");
+            System.Windows.Forms.TreeNode treeNode8 = new System.Windows.Forms.TreeNode(" TP");
             this.panelButtons = new System.Windows.Forms.Panel();
             this.buttonBack = new System.Windows.Forms.Button();
             this.buttonNext = new System.Windows.Forms.Button();
@@ -176,7 +176,7 @@
             this.panelStart.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panelStart.Location = new System.Drawing.Point(0, 0);
             this.panelStart.Name = "panelStart";
-            this.panelStart.Size = new System.Drawing.Size(497, 356);
+            this.panelStart.Size = new System.Drawing.Size(497, 357);
             this.panelStart.TabIndex = 3;
             // 
             // panelShortcut
@@ -187,7 +187,7 @@
             this.panelShortcut.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panelShortcut.Location = new System.Drawing.Point(0, 0);
             this.panelShortcut.Name = "panelShortcut";
-            this.panelShortcut.Size = new System.Drawing.Size(497, 356);
+            this.panelShortcut.Size = new System.Drawing.Size(497, 357);
             this.panelShortcut.TabIndex = 6;
             this.panelShortcut.Visible = false;
             // 
@@ -258,31 +258,31 @@
             this.treeViewShortcut.CheckBoxes = true;
             this.treeViewShortcut.Location = new System.Drawing.Point(177, 80);
             this.treeViewShortcut.Name = "treeViewShortcut";
-            treeNode9.Name = "cm";
-            treeNode9.Text = " CM";
-            treeNode10.Name = "lc";
-            treeNode10.Text = " LC";
-            treeNode11.Name = "pp";
-            treeNode11.Text = " PP";
-            treeNode12.Name = "af";
-            treeNode12.Text = " AF";
-            treeNode13.Name = "gp";
-            treeNode13.Text = " GP";
-            treeNode14.Name = "cp";
-            treeNode14.Text = " CP";
-            treeNode15.Name = "ar";
-            treeNode15.Text = " AR";
-            treeNode16.Name = "tp";
-            treeNode16.Text = " TP";
+            treeNode1.Name = "cm";
+            treeNode1.Text = " CM";
+            treeNode2.Name = "lc";
+            treeNode2.Text = " LC";
+            treeNode3.Name = "pp";
+            treeNode3.Text = " PP";
+            treeNode4.Name = "af";
+            treeNode4.Text = " AF";
+            treeNode5.Name = "gp";
+            treeNode5.Text = " GP";
+            treeNode6.Name = "cp";
+            treeNode6.Text = " CP";
+            treeNode7.Name = "ar";
+            treeNode7.Text = " AR";
+            treeNode8.Name = "tp";
+            treeNode8.Text = " TP";
             this.treeViewShortcut.Nodes.AddRange(new System.Windows.Forms.TreeNode[] {
-            treeNode9,
-            treeNode10,
-            treeNode11,
-            treeNode12,
-            treeNode13,
-            treeNode14,
-            treeNode15,
-            treeNode16});
+            treeNode1,
+            treeNode2,
+            treeNode3,
+            treeNode4,
+            treeNode5,
+            treeNode6,
+            treeNode7,
+            treeNode8});
             this.treeViewShortcut.Size = new System.Drawing.Size(146, 154);
             this.treeViewShortcut.TabIndex = 1;
             // 
@@ -305,7 +305,7 @@
             this.panelInstall.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panelInstall.Location = new System.Drawing.Point(0, 0);
             this.panelInstall.Name = "panelInstall";
-            this.panelInstall.Size = new System.Drawing.Size(497, 356);
+            this.panelInstall.Size = new System.Drawing.Size(497, 357);
             this.panelInstall.TabIndex = 7;
             this.panelInstall.Visible = false;
             // 
@@ -344,6 +344,7 @@
             // 
             this.textBoxProgress.Location = new System.Drawing.Point(23, 56);
             this.textBoxProgress.Name = "textBoxProgress";
+            this.textBoxProgress.ReadOnly = true;
             this.textBoxProgress.Size = new System.Drawing.Size(450, 179);
             this.textBoxProgress.TabIndex = 3;
             this.textBoxProgress.Text = "";
@@ -378,7 +379,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.ClientSize = new System.Drawing.Size(497, 356);
+            this.ClientSize = new System.Drawing.Size(497, 357);
             this.Controls.Add(this.panelButtons);
             this.Controls.Add(this.panelStart);
             this.Controls.Add(this.panelShortcut);

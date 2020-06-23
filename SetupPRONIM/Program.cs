@@ -19,25 +19,27 @@ namespace SetupPRONIM
         [STAThread]
         static void Main()
         {
+            
             if(!isAdmin())
             {
-                ProcessStartInfo processStartInfo = new ProcessStartInfo();
-                processStartInfo.UseShellExecute = true;
-                processStartInfo.WorkingDirectory = Environment.CurrentDirectory;
-                processStartInfo.FileName = Application.ExecutablePath;
-                processStartInfo.Verb = "runas";
-                try
-                {
-                    Process.Start(processStartInfo);
-                }
-                catch
-                {
-                    return;
-                }
+                /*  ProcessStartInfo processStartInfo = new ProcessStartInfo();
+                  processStartInfo.UseShellExecute = true;
+                  processStartInfo.WorkingDirectory = Environment.CurrentDirectory;
+                  processStartInfo.FileName = Application.ExecutablePath;
+                  processStartInfo.Verb = "runas";
+                  try
+                  {
+                      Process.Start(processStartInfo);
+                  }
+                  catch
+                  {
+                      return;
+                  }*/
+                MessageBox.Show("Por favor execute o instalador como Administrador.");
                 Application.Exit();
                 return;
             }
-
+            
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new Setup());

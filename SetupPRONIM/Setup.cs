@@ -9,6 +9,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
+using System.Threading;
 
 namespace SetupPRONIM
 {
@@ -53,28 +54,70 @@ namespace SetupPRONIM
                 /*
                  * 1 Criação DSN
                  * 1 Conexão ODBC
+                 * 1 Start
                  * 4 Pastas criadas
                  * 4 Arquivos copiados
-                 * 1 Pasta temp criada
-                 * 8 Instaladores copiados
-                 * 8 Instaladores executados
                  * 1 Atualizador executado
                  * X Atalhos selecionados
                  */
+                List<int> install = new List<int>();
                 int selectedNodes = 0;
                 foreach (TreeNode node in treeViewShortcut.Nodes)
                 {
                     if (node.Checked)
                     {
-                        selectedNodes++;
-                    }
-                    if (node.Text.Equals(" GP"))
-                    {
-                        GP_ODBC = true;
-                        selectedNodes += 2;
+                        if (node.Text.Equals(" CM") || node.Text.Equals(" LC") || node.Text.Equals(" PP") || node.Text.Equals(" AF"))
+                        {
+                            if (!install.Contains(CM_LC_PP_AF))
+                            {
+                                install.Add(CM_LC_PP_AF);
+                            }
+                            selectedNodes++;
+                        }
+                        else if (node.Text.Equals(" AR") || node.Text.Equals(" TP"))
+                        {
+                            if (!install.Contains(AR_TP))
+                            {
+                                install.Add(AR_TP);
+                            }
+                            selectedNodes++;
+                        }
+                        else if (node.Text.Equals(" CP"))
+                        {
+                            if (!install.Contains(CP_GP))
+                            {
+                                install.Add(CP_GP);
+                            }
+                            selectedNodes++;
+                        }
+                        else if (node.Text.Equals(" GP"))
+                        {
+                            GP_ODBC = true;
+                            if (!install.Contains(CP_GP))
+                            {
+                                install.Add(CP_GP);
+                            }
+                            selectedNodes++;
+                        }
                     }
                 }
-                progressBar.Maximum = 1 + 1 + 4 + 4 + 1 + 8 + 8 + selectedNodes + 1;
+                foreach (int mode in install)
+                {
+                    switch (mode)
+                    {
+                        case CM_LC_PP_AF:
+                            selectedNodes += 8;
+                            break;
+                        case AR_TP:
+                            selectedNodes += 4;
+                            break;
+                        case CP_GP:
+                            selectedNodes += 4 + 1 + 1;
+                            break;
+                    }
+                }
+
+                progressBar.Maximum = 1 + 1 + 4 + 4 + 1 + selectedNodes;
                 progressBar.Style = ProgressBarStyle.Blocks;
                 progressBar.Value = 0;
 
@@ -122,16 +165,11 @@ namespace SetupPRONIM
             reportProgressString(@"Conectando à ODBC: ADMINBD04\PRONIM");
             ODBCManager.ConnectODBC("PRONIM32", "SQL Server", @"ADMINBD04\PRONIM", "PRONIMCONSULTA", "#consulta123");
 
-            if(GP_ODBC)
-            {
-                reportProgressString(@"Criando SQL Server DSN: GP");
-                ODBCManager.CreateDSN32("GP", "FOLHA", @"ADMINBD05\PRONIM", "SQL Server Native Client 11.0", false, "");
-            }
-
             // Solicita autenticação para se conectar ao servidor
+            bool tryAgain = false;
             while (true)
             {
-                if (NetworkInterface.connectToRemote(server, null, null, true) == NetworkInterface.getErrorForNumber(NetworkInterface.ERROR_CANCELLED))
+                if (NetworkInterface.connectToRemote(server, null, null, tryAgain) == NetworkInterface.getErrorForNumber(NetworkInterface.ERROR_CANCELLED))
                 {
                     if (MessageBox.Show("Realmente deseja cancelar a operação?", "ALERT", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                     {
@@ -139,6 +177,7 @@ namespace SetupPRONIM
                         backgroundInstaller.ReportProgress(0);
                         return;
                     }
+                    tryAgain = true;
                 }
                 else break;
             }
@@ -192,15 +231,17 @@ namespace SetupPRONIM
                 if(Environment.Is64BitOperatingSystem)
                 {
                     reportProgressString(@"Copiando arquivo: sqlncli 64 bits.msi");
-                    File.Copy(Path.Combine(workPath, @"sqlncli 64 bits.msi"), Path.Combine(tempPath, @"sqlncli 64 bits.msi"), true);
+                    File.Copy(Path.Combine(workPath, @"INSTALADORES\sqlncli 64 bits.msi"), Path.Combine(tempPath, @"sqlncli 64 bits.msi"), true);
                     createProcess(Path.Combine(tempPath, @"sqlncli 64 bits.msi"), "/quiet IACCEPTSQLNCLILICENSETERMS=YES", true);
                 }
                 else
                 {
                     reportProgressString(@"Copiando arquivo: sqlncli 32 bits.msi");
-                    File.Copy(Path.Combine(workPath, @"sqlncli 32 bits.msi"), Path.Combine(tempPath, @"sqlncli 32 bits.msi"), true);
+                    File.Copy(Path.Combine(workPath, @"INSTALADORES\sqlncli 32 bits.msi"), Path.Combine(tempPath, @"sqlncli 32 bits.msi"), true);
                     createProcess(Path.Combine(tempPath, @"sqlncli 32 bits.msi"), "/quiet IACCEPTSQLNCLILICENSETERMS=YES", true);
                 }
+                reportProgressString(@"Criando SQL Server DSN: GP");
+                ODBCManager.CreateDSN32("GP", "FOLHA", @"ADMINBD05\PRONIM", "SQL Server Native Client 11.0", false, "");
             }
 
             // Instalação de todos os componentes necessários
@@ -209,21 +250,21 @@ namespace SetupPRONIM
             {
                 if (node.Checked)
                 {
-                    if (node.Text.Equals("CM") || node.Text.Equals("LC") || node.Text.Equals("PP") || node.Text.Equals("AF"))
+                    if (node.Text.Equals(" CM") || node.Text.Equals(" LC") || node.Text.Equals(" PP") || node.Text.Equals(" AF"))
                     {
                         if (!install.Contains(CM_LC_PP_AF))
                         {
                             install.Add(CM_LC_PP_AF);
                         }
                     }
-                    else if (node.Text.Equals("AR") || node.Text.Equals("TP"))
+                    else if (node.Text.Equals(" AR") || node.Text.Equals(" TP"))
                     {
                         if (!install.Contains(AR_TP))
                         {
                             install.Add(AR_TP);
                         }
                     }
-                    else if (node.Text.Equals("CP") || node.Text.Equals("GP"))
+                    else if (node.Text.Equals(" CP") || node.Text.Equals(" GP"))
                     {
                         if (!install.Contains(CP_GP))
                         {
@@ -291,10 +332,12 @@ namespace SetupPRONIM
                 string destination = Path.Combine(tempPath, fileName);
 
                 reportProgressString("Copiando instalador: " + fileName);
-                //File.Copy(source, destination, true);
+                Thread.Sleep(50);
+                File.Copy(source, destination, true);
 
                 reportProgressString("Instalando:  " + fileName);
-                //createProcess(destination, @"/S", true);
+                Thread.Sleep(50);
+                createProcess(destination, @"/S", true);
             }
 
             // Criação dos atalhos
@@ -328,7 +371,7 @@ namespace SetupPRONIM
             if (!tempStr.Equals(""))
             {
                 labelProgress.Text = tempStr;
-                //labelProgress.Text += "|" + progress.ToString();
+                labelProgress.Text += " | " + progress.ToString();
                 textBoxProgress.AppendText(tempStr + "\r\n");
                 textBoxProgress.SelectionStart = textBoxProgress.TextLength;
                 textBoxProgress.ScrollToCaret();
@@ -344,6 +387,7 @@ namespace SetupPRONIM
             }
             else if (e.Error != null)
             {
+                MessageBox.Show(e.Error.Message);
                 labelProgress.Text = "Ocorreu um erro durante a instalação!";
             }
             else
@@ -410,6 +454,7 @@ namespace SetupPRONIM
         {
             tempStr = text;
             this.backgroundInstaller.ReportProgress(progress++);
+            Thread.Sleep(10);
         }
     }
 }
