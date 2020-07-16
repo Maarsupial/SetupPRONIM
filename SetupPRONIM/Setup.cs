@@ -162,8 +162,11 @@ namespace SetupPRONIM
             reportProgressString(@"Criando SQL Server DSN: PRONIM32");
             ODBCManager.CreateDSN32("PRONIM32", "PRONIM32", @"ADMINBD04\PRONIM", "SQL Server", false, "");
 
+            // Solicita senha para se conectar com o ODBC
+            OdbcSenha odbcSenhaForm = new OdbcSenha();
+            odbcSenhaForm.ShowDialog();
             reportProgressString(@"Conectando à ODBC: ADMINBD04\PRONIM");
-            ODBCManager.ConnectODBC("PRONIM32", "SQL Server", @"ADMINBD04\PRONIM", "PRONIMCONSULTA", "#consulta123");
+            ODBCManager.ConnectODBC("PRONIM32", "SQL Server", @"ADMINBD04\PRONIM", "PRONIMCONSULTA", odbcSenhaForm.odbcPswd);
 
             // Solicita autenticação para se conectar ao servidor
             bool tryAgain = false;

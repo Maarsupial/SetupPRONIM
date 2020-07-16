@@ -8,7 +8,7 @@ using System.Text;
 namespace SetupPRONIM
 {
     ///<summary>
-    /// Class to assist with creation and removal of ODBC DSN entries
+    /// Classe para auxiliar na criação e exclusão de entradas ODBC e DSN.
     ///</summary>
     public static class ODBCManager
     {
